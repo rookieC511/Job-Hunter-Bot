@@ -1,0 +1,40 @@
+name: Job Hunter Bot
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'  # 每4小时跑一次
+  workflow_dispatch:       # 允许手动点击运行
+
+permissions:
+  contents: write          # 允许脚本修改并提交 json 文件
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install Requests
+      run: pip install requests
+
+    - name: Run Monitor Script
+      id: run_script
+      env:
+        PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+      run: python job_monitor.py
+
+    - name: Commit and Push changes
+      if: steps.run_script.outputs.STATUS == 'changed'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add jobs_db.json
+        git commit -m "Update job list"
+        git push
